@@ -1,75 +1,117 @@
 package com.couchbase.demo.couchbase_demo;
 
 
+import com.couchbase.client.java.Bucket;
+import com.couchbase.client.java.Cluster;
+import com.couchbase.client.java.CouchbaseCluster;
+import com.couchbase.client.java.document.json.JsonObject;
+import com.couchbase.client.java.env.DefaultCouchbaseEnvironment;
+import com.couchbase.client.java.query.N1qlQuery;
+import com.couchbase.client.java.query.N1qlQueryResult;
+import com.couchbase.client.java.query.N1qlQueryRow;
+import com.couchbase.demo.couchbase_demo.config.CouchbaseConfig;
 import com.couchbase.demo.couchbase_demo.configutil.*;
-import com.google.gson.Gson;
-import com.google.gson.internal.LinkedTreeMap;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.couchbase.core.CouchbaseTemplate;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
 
-import java.util.Optional;
+import java.util.List;
+import java.util.Map;
+
+import static com.couchbase.client.java.query.Select.select;
 
 
 @Service
 public class MyService {
-    @Autowired
-    private Gson gson;
-CouchbaseTemplate template;
+//    @Autowired
+//    private Gson gson;
+
     ConfigRepository configRepository;
 
-    public MyService(CouchbaseTemplate template) {
-        this.template = template;
+    CouchbaseTemplate couchbaseConfig;
+
+    public MyService(ConfigRepository configRepository) {
+        this.configRepository = configRepository;
     }
 
-
-    public Object dataParser(String id) {
-
-        System.out.println("id--------"+id);
-        String[] filterData=id.split("\\.");
-
-        System.out.println("filterData.length "+filterData.length);
-
-        if (filterData.length>0){
-            Optional<ConfigDocument> document= configRepository.findById(filterData[0]);
-
-            LinkedTreeMap nsdlConfigJSON=document.get().getValue();
-
-//            BaseConfigDocument baseConfigDocument=modelParser(filterData[0],nsdlConfigJSON);
+//    public Object dataParser(String serviceName,String configType ){
 //
-//            ((NSDLConfigDocument)baseConfigDocument).getDatabaseConfig();
+//       /* String query = "SELECT name FROM `travel-sample` " +
+//                "WHERE type = 'airport' LIMIT 100";
+//        N1qlQueryResult result1 = configRepository.query(N1qlQuery.simple(query));
+//*/
+//
+//        return configRepository.listTenantUsers(serviceName,configType);
+//    }
+/* public Object dataParser(String serviceName,String configType ){
 
-            System.out.println("nsdlConfigJSON "+nsdlConfigJSON);
-            return nsdlConfigJSON;
-        }
 
-        return null;
+     Cluster cluster = CouchbaseCluster.create("localhost");
+     Bucket bucket =
+     cluster.openBucket("laas_config","avi123");
+
+//        String query = "SELECT name FROM `travel-sample` " +
+//                "WHERE type = 'airport' LIMIT 100";
+
+        String query = "Select databaseConfig from `laas_config` where meta().id = 'nsdl'";
+        N1qlQueryResult result1 = bucket.query(N1qlQuery.simple(query));
+
+
+        return result1.allRows();
+    }*/
+
+//    @Cacheable(value = "users", key = "{ #serviceName, #configType}")
+    @Cacheable(value = "users", key = "#serviceName.concat('-').concat( #configType)")
+    public Map<String, Object> dataParser(String serviceName, String configType ){
+     System.out.println("serviceName--->>"+serviceName);
+     System.out.println("configType--->>"+configType);
+
+
+     // Through the builder
+     System.setProperty("com.couchbase.queryEnabled", "true");
+
+     Cluster cluster = CouchbaseCluster.create();
+     cluster.authenticate("Administrator", "avi123");
+     Bucket bucket = cluster.openBucket("laas_config");
+
+        String query = "Select "+configType+" from `laas_config` where meta().id = '"+serviceName+"'";
+        N1qlQueryResult result = bucket.query(N1qlQuery.simple(query));
+     System.out.println(result);
+//     bucket.async()
+//             .query(select("*").from("laas_config").limit(10))
+//             .subscribe(result -> {
+//                         result.errors()
+//                                 .subscribe(
+//                                         e -> System.err.println("N1QL Error/Warning: " + e),
+//                                         runtimeError -> runtimeError.printStackTrace()
+//                                 );
+//                         result.rows()
+//                                 .map(row -> row.value())
+//                                 .subscribe(
+//                                         rowContent -> System.out.println("rowContent--->>>"+rowContent),
+//                                         runtimeError -> runtimeError.printStackTrace()
+//                                 );
+//                     }
+//             );
+
+//     Result result=new Result();
+//     result.setData(result1.allRows().toString());
+
+
+     JsonObject document = getDocument(configType, result);
+     if (document == null) {
+         return null;
+     }
+     return document.toMap();
     }
 
-    private BaseConfigDocument modelParser(String className,String jsonData){
 
-        BaseConfigDocument baseConfigDocument;
-        switch (className){
-
-            case "NDLS":
-                NSDLConfigDocument nsdlConfigDocument= gson.fromJson(jsonData, NSDLConfigDocument.class);
-                System.out.println(nsdlConfigDocument.toString());
-                return nsdlConfigDocument;
-
-                 default:
-                     baseConfigDocument= gson.fromJson(jsonData, NSDLConfigDocument.class);
-
-                     break;
-
-
+    protected JsonObject getDocument(String rootNode, N1qlQueryResult result) {
+        List<N1qlQueryRow> attributes = result.allRows();
+        if (attributes.isEmpty()) {
+            return null;
         }
-
-        return baseConfigDocument;
+        return attributes.get(0).value();
     }
 
 }

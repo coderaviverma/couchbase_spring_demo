@@ -11,26 +11,20 @@ import org.springframework.data.couchbase.core.mapping.Document;
 import javax.validation.constraints.NotNull;
 
 @Document
-@Data
 @AllArgsConstructor
 @NoArgsConstructor
 @EqualsAndHashCode
 public class DatabaseConfig {
 
-    @NotNull
-    @Id
     private String db_name;
 
-    @NotNull
-    @Field
+
     private String db_url;
 
-    @NotNull
-    @Field
+
     private String db_password;
 
-    @NotNull
-    @Field
+
     private String db_type;
 
 

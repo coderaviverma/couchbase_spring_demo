@@ -4,12 +4,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.data.couchbase.config.AbstractCouchbaseConfiguration;
 import org.springframework.data.couchbase.repository.config.EnableCouchbaseRepositories;
 
+import java.lang.reflect.Array;
 import java.util.Arrays;
 import java.util.List;
 @Configuration
 @EnableCouchbaseRepositories
 public class CouchbaseConfig extends AbstractCouchbaseConfiguration {
-
 
     @Override
     protected List<String> getBootstrapHosts() {
