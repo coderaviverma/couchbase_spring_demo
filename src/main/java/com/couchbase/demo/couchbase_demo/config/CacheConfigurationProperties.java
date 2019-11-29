@@ -10,7 +10,7 @@ import java.util.Map;
 @Data
 public class CacheConfigurationProperties {
 
-    private long timeoutSeconds = 60;
+    private long timeoutSeconds = 600;
     private int redisPort = 6379;
     private String redisHost = "localhost";
     // Mapping of cacheNames to expira-after-write timeout in seconds
