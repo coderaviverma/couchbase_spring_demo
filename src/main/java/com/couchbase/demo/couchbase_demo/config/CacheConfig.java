@@ -11,10 +11,12 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -68,5 +70,13 @@ public class CacheConfig extends CachingConfigurerSupport {
                 .builder(redisConnectionFactory)
                 .cacheDefaults(cacheConfiguration(properties))
                 .withInitialCacheConfigurations(cacheConfigurations).build();
+    }
+
+    @Bean
+    RedisTemplate<?, ?> redisTemplate(JedisConnectionFactory factory) {
+        RedisTemplate<Object, Object> template = new RedisTemplate<>();
+        template.setDefaultSerializer(new KryoSerializer<>(Arrays.asList(Object.class, Object.class)));
+        template.setConnectionFactory(factory);
+        return template;
     }
 }

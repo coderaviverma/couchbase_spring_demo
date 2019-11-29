@@ -11,10 +11,13 @@ import com.couchbase.client.java.query.N1qlQueryResult;
 import com.couchbase.client.java.query.N1qlQueryRow;
 import com.couchbase.demo.couchbase_demo.config.CouchbaseConfig;
 import com.couchbase.demo.couchbase_demo.configutil.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.couchbase.core.CouchbaseTemplate;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -26,66 +29,132 @@ public class MyService {
 //    @Autowired
 //    private Gson gson;
 
-    ConfigRepository configRepository;
+//    @Autowired
+//    private RedisTemplate<String, Object> redisTemplate;
 
-    CouchbaseTemplate couchbaseConfig;
 
-    public MyService(ConfigRepository configRepository) {
-        this.configRepository = configRepository;
-    }
 
-    @Cacheable(value = "users", key = "{ #serviceName, #configType}")
+//    @Cacheable(value = "users", key = "{ #serviceName, #configType}")
     public Map<String, Object> dataParser(String serviceName, String configType ){
      System.out.println("serviceName--->>"+serviceName);
      System.out.println("configType--->>"+configType);
+
+     String[] configTypes=configType.split(",");
+
+        HashMap<String,Object> map=new HashMap<>();
+
+        boolean anyDataRemaning=false;
+        String[] remaningConfigType=new String[configTypes.length];
+        int configCounter=0;
+        //Checking data exit in redis
+        for (int i = 0; i < configTypes.length; i++) {
+
+          Map result = chechDataInRedis(configTypes[i]);
+
+          if (result!=null){
+              map.putAll(result);
+          }else {
+              anyDataRemaning = true;
+              remaningConfigType[configCounter]=configTypes[i];
+              configCounter++;
+          }
+        }
+
+        //Checking for remaning data in db
+        if (anyDataRemaning){
+            N1qlQueryResult result=getDataFromDB(serviceName,remaningConfigType);
+
+            JsonObject document = getDocument(configType, result);
+
+            Map resultFromDb = jsonToMapParser(document);
+
+            if (resultFromDb!=null){
+                map.putAll(resultFromDb);
+            }
+
+            //Save data to redis
+
+            saveDataToCache(result,remaningConfigType);
+        }
+
+
 
 
      // Through the builder
      System.setProperty("com.couchbase.queryEnabled", "true");
 
-     Cluster cluster = CouchbaseCluster.create();
-     cluster.authenticate("Administrator", "avi123");
-     Bucket bucket = cluster.openBucket("laas_config");
+        return map;
+    }
 
-        String query = "Select "+configType+" from `laas_config` where meta().id = '"+serviceName+"'";
-        N1qlQueryResult result = bucket.query(N1qlQuery.simple(query));
-//     System.out.println(result);
-     bucket.async()
-             .query(select("*").from("laas_config").limit(10))
-             .subscribe(result1 -> {
-                         result1.errors()
-                                 .subscribe(
-                                         e -> System.err.println("N1QL Error/Warning: " + e),
-                                         runtimeError -> runtimeError.printStackTrace()
-                                 );
-                         result1.rows()
-                                 .map(row -> row.value())
-                                 .subscribe(
-                                         rowContent -> System.out.println("rowContent--->>>"+rowContent),
-                                         runtimeError -> runtimeError.printStackTrace()
-                                 );
-                     }
-             );
+    private Map<String, Object> chechDataInRedis(String key){
 
-//     Result result=new Result();
-//     result.setData(result1.allRows().toString());
+        //Get data from Redis
 
-
-     JsonObject document = getDocument(configType, result);
-     if (document == null) {
-         return null;
-     }
-     return document.toMap();
+        return new HashMap<>();
     }
 
 
-    protected JsonObject getDocument(String rootNode, N1qlQueryResult result) {
+    private void saveDataToCache(N1qlQueryResult result,String[] remaningConfigType){
+
+
+        for (int i = 0; i < remaningConfigType.length; i++) {
+
+            //Save data in Redis
+            JsonObject document = getDocument(remaningConfigType[i], result);
+
+            Map resultFromDb = jsonToMapParser(document);
+
+            if (resultFromDb!=null){
+
+                //save this map to redis
+
+            }
+
+        }
+
+    }
+
+
+    private N1qlQueryResult getDataFromDB(String serviceName,String[] configTypes){
+
+        String configType=String.join(",", configTypes);
+
+        Cluster cluster = CouchbaseCluster.create();
+        cluster.authenticate("Administrator", "avi123");
+        Bucket bucket = cluster.openBucket("laas_config");
+
+        String query = "Select "+configType+" from `laas_config` where meta().id = '"+serviceName+"'";
+        N1qlQueryResult result = bucket.query(N1qlQuery.simple(query));
+
+       return result;
+    }
+
+
+    protected JsonObject getDocument(N1qlQueryResult result) {
         List<N1qlQueryRow> attributes = result.allRows();
         if (attributes.isEmpty()) {
             return null;
         }
 //        return attributes.get(0).value().getObject(rootNode);
         return attributes.get(0).value();
+    }
+
+    protected JsonObject getDocument(String rootNode, N1qlQueryResult result) {
+        List<N1qlQueryRow> attributes = result.allRows();
+        if (attributes.isEmpty()) {
+            return null;
+        }
+        return attributes.get(0).value().getObject(rootNode);
+//        return attributes.get(0).value();
+    }
+
+    private Map<String,Object> jsonToMapParser(JsonObject document){
+
+        if (document == null) {
+            return null;
+        }
+
+        return document.toMap();
     }
 
 }
