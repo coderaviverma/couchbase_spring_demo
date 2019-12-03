@@ -1,6 +1,8 @@
+/*
 package com.couchbase.demo.couchbase_demo.config;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.CacheManager;
@@ -11,9 +13,13 @@ import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.jedis.JedisClientConfiguration;
 import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.serializer.GenericToStringSerializer;
+import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 
 import java.time.Duration;
 import java.util.Arrays;
@@ -72,11 +78,17 @@ public class CacheConfig extends CachingConfigurerSupport {
                 .withInitialCacheConfigurations(cacheConfigurations).build();
     }
 
-    @Bean
-    RedisTemplate<?, ?> redisTemplate(JedisConnectionFactory factory) {
-        RedisTemplate<Object, Object> template = new RedisTemplate<>();
-        template.setDefaultSerializer(new KryoSerializer<>(Arrays.asList(Object.class, Object.class)));
-        template.setConnectionFactory(factory);
-        return template;
-    }
+//    @Bean
+//    RedisTemplate<?, ?> redisTemplate(JedisConnectionFactory factory) {
+//        RedisTemplate<Object, Object> template = new RedisTemplate<>();
+//        template.setDefaultSerializer(new KryoSerializer<>(Arrays.asList(Object.class, Object.class)));
+//        template.setConnectionFactory(factory);
+//        return template;
+//    }
+
+
+
+
+
 }
+*/

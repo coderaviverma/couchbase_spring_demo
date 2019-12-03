@@ -1,6 +1,8 @@
 package com.couchbase.demo.couchbase_demo;
 
 
+import com.couchbase.client.java.document.json.JsonObject;
+import com.google.gson.internal.LinkedTreeMap;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,14 +23,14 @@ public class MainController {
     }
 
     @RequestMapping(value = "/config", method  = RequestMethod.GET)
-    public ResponseEntity<?> getConfig(@RequestParam("serviceName") String serviceName,@RequestParam("configType") String configType) {
+    public ResponseEntity<String> getConfig(@RequestParam("serviceName") String serviceName, @RequestParam("configType") String configType) {
 
 
-        Map<String,Object> hashMap= myService.dataParser(serviceName,configType);
+        JsonObject jsonObject= myService.dataParser(serviceName,configType);
 
-        System.out.println("ndls--->>"+hashMap);
+        System.out.println("ndls--->>"+jsonObject);
 
-        return new ResponseEntity<>(hashMap, HttpStatus.OK);
+        return new ResponseEntity<>(jsonObject.toString(), HttpStatus.OK);
     }
 
 }
